@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Calculateur ROI — Lucca × Alpineo</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --o:#F4622A;--n:#0F172A;--slate:#1E293B;
+  --mid:#64748B;--mist:#F1F5F9;--line:#E2E8F0;
+  --w:#fff;
+  --blue:#2563EB;--bluel:#EFF6FF;--blueb:#BFDBFE;
+  --red:#DC2626;--redl:#FEF2F2;--redb:#FCA5A5;
+  --green:#059669;--greenl:#ECFDF5;--greenb:#A7F3D0;
+  --teal:#0891B2;--amber:#D97706;--purple:#7C3AED;
+}
+body{font-family:'Nunito',system-ui,sans-serif;background:var(--mist);color:var(--n);font-size:14px;min-height:100vh}
+
+/* ── STICKY HEADER ── */
+.site-hdr{position:sticky;top:0;z-index:100;background:var(--n);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.logo-area{display:flex;align-items:center;gap:14px}
+.logo-dot{width:10px;height:10px;border-radius:99px;background:var(--o)}
+.site-title{font-size:18px;font-weight:900;color:var(--w);letter-spacing:-.3px}
+.site-sub{font-size:10px;color:#94A3B8;letter-spacing:2px;margin-top:1px}
+.hdr-kpis{display:flex;gap:10px;flex-wrap:wrap}
+.hdr-kpi{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px 14px;text-align:center;min-width:120px}
+.hdr-kpi-val{font-size:17px;font-weight:800}
+.hdr-kpi-lbl{font-size:9px;color:#94A3B8;margin-top:1px;letter-spacing:.5px}
+
+/* ── PERSONS BAR ── */
+.persons-bar{background:var(--w);border-bottom:1px solid var(--line);padding:10px 28px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pb-label{font-size:10px;color:var(--mid);font-weight:800;letter-spacing:1.5px;white-space:nowrap}
+.person-pill{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;border:1.5px solid;cursor:default}
+.person-pill .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.person-pill input[type=text]{border:none;background:transparent;font-family:inherit;font-size:12px;font-weight:800;outline:none;width:90px}
+.person-pill .rate-wrap{display:flex;align-items:center;gap:3px}
+.person-pill input[type=number]{width:62px;border:1px solid var(--line);background:var(--mist);border-radius:5px;padding:2px 5px;font-family:inherit;font-size:12px;text-align:right;outline:none}
+.person-pill input[type=number]:focus{border-color:var(--o)}
+.person-pill .unit{font-size:10px;color:var(--mid)}
+.pill-del{background:none;border:none;color:#CBD5E1;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+.pill-del:hover{color:var(--red)}
+.add-person-btn{border:1.5px dashed var(--line);background:transparent;border-radius:8px;padding:5px 12px;font-size:11px;color:var(--mid);cursor:pointer;font-family:inherit;transition:all .15s}
+.add-person-btn:hover{border-color:var(--mid);color:var(--n)}
+.avg-note{font-size:10px;color:var(--mid)}
+
+/* ── TABS ── */
+.tab-bar{background:var(--w);border-bottom:1px solid var(--line);padding:8px 28px;display:flex;gap:4px}
+.tab-btn{padding:7px 18px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--mid);background:transparent;transition:all .15s}
+.tab-btn:hover{color:var(--n);background:var(--mist)}
+.tab-btn.active{background:var(--o);color:var(--w)}
+
+/* ── CONTENT ── */
+.content{padding:24px 28px;max-width:1280px;margin:0 auto}
+.pane{display:none}.pane.active{display:block}
+
+/* ── SECTION HEADER ── */
+.section-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.section-title{font-size:16px;font-weight:900;color:var(--n)}
+.section-desc{font-size:11px;color:var(--mid);margin-top:3px;font-weight:400}
+
+/* ── BUTTONS ── */
+.btn{padding:8px 16px;border-radius:9px;border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.btn:active{transform:scale(.97)}
+.btn-green{background:var(--green);color:var(--w)}
+.btn-green:hover{background:#047857}
+.btn-red{background:var(--red);color:var(--w)}
+.btn-red:hover{background:#B91C1C}
+.btn-outline{background:var(--w);color:var(--mid);border:1.5px solid var(--line)}
+.btn-outline:hover{border-color:var(--mid);color:var(--n)}
+
+/* ── CATEGORY BLOCK ── */
+.cat-block{margin-bottom:20px}
+.cat-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:var(--n);border-radius:12px 12px 0 0}
+.cat-hdr-left{display:flex;align-items:center;gap:8px}
+.cat-hdr-right{font-size:11px;color:#94A3B8}
+.cat-badge{border-radius:5px;padding:2px 8px;font-size:10px;font-weight:800;letter-spacing:.5px}
+.cat-name{font-size:13px;font-weight:800;color:var(--w)}
+.cat-table{background:var(--w);border:1px solid var(--line);border-top:none;border-radius:0 0 12px 12px;overflow:hidden}
+
+/* ── TABLE ── */
+.t-head{display:grid;padding:7px 14px;background:#F8FAFC;border-bottom:1px solid var(--line);font-size:10px;color:var(--mid);font-weight:800;letter-spacing:.5px;gap:8px}
+.t-row{display:grid;padding:7px 14px;align-items:center;gap:8px;border-bottom:1px solid var(--line);transition:background .1s}
+.t-row:last-child{border-bottom:none}
+.t-row:nth-child(even){background:#FAFBFC}
+.t-row:hover{background:#F0F9FF}
+
+/* Task grid: name | person | freq | avant | apres | gain | val | del */
+.tg{grid-template-columns:2.5fr 120px 70px 70px 70px 70px 95px 28px}
+
+.t-name{border:none;background:transparent;font-family:inherit;font-size:12px;color:var(--n);outline:none;width:100%;font-weight:600}
+.t-name:focus{outline:1px solid var(--o);border-radius:4px;padding:1px 4px}
+.t-sel{padding:4px 6px;border:1.5px solid var(--line);border-radius:6px;font-size:11px;font-family:inherit;background:var(--w);color:var(--n);outline:none;cursor:pointer}
+.t-sel:focus{border-color:var(--o)}
+.ni{width:62px;padding:3px 6px;border:1.5px solid var(--line);border-radius:6px;font-size:12px;text-align:right;font-family:inherit;background:var(--w);color:var(--n);outline:none}
+.ni:focus{border-color:var(--o)}
+.gain-val{text-align:center;font-weight:800;font-size:12px}
+.month-val{text-align:right;font-weight:800;font-size:13px}
+.del-btn{background:none;border:none;color:#CBD5E1;cursor:pointer;font-size:17px;line-height:1;padding:0;text-align:center}
+.del-btn:hover{color:var(--red)}
+
+/* ── TOTAL BAR ── */
+.tot-bar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--w);border-radius:10px;border:2px dashed var(--line);margin-top:6px;flex-wrap:wrap;gap:8px}
+.tot-bar-lbl{font-size:13px;color:var(--mid);font-weight:700}
+.tot-bar-val{font-size:18px;font-weight:900}
+
+/* ── INCIDENT CARDS ── */
+.inc-card{background:var(--w);border-radius:14px;margin-bottom:14px;border:2px solid var(--redb);overflow:hidden;transition:opacity .2s}
+.inc-card.disabled{opacity:.45;pointer-events:none}
+.inc-hdr{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 16px;background:var(--redl);border-bottom:1px solid var(--line)}
+.inc-name-input{flex:1;min-width:200px;border:none;background:transparent;font-family:inherit;font-size:14px;font-weight:900;color:var(--n);outline:none}
+.inc-name-input::placeholder{color:#CBD5E1}
+.inc-freq-wrap{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mid);white-space:nowrap}
+.inc-avoid-wrap{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--mid);cursor:pointer;white-space:nowrap}
+.inc-avoid-wrap input{accent-color:var(--green);width:14px;height:14px}
+.inc-total-badge{margin-left:auto;text-align:right}
+.inc-total-badge .big{font-size:17px;font-weight:900;color:var(--red)}
+.inc-total-badge .sm{font-size:9px;color:var(--mid);margin-top:1px}
+
+.inc-body{padding:14px 16px}
+.items-label{font-size:10px;color:var(--mid);font-weight:800;letter-spacing:1.5px;margin-bottom:8px}
+
+/* Item grid: person | label | rate | hours | cost | del */
+.ig{grid-template-columns:130px 1fr 80px 70px 80px 26px}
+.item-row{display:grid;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.item-row:last-child{border-bottom:none}
+.item-lbl-input{border:none;border-bottom:1px solid var(--line);background:transparent;font-family:inherit;font-size:11px;color:var(--n);outline:none;width:100%;padding:1px 0}
+.item-lbl-input:focus{border-color:var(--o)}
+.item-rate-box{font-size:11px;font-weight:700;text-align:center}
+.item-cost-box{font-size:12px;font-weight:800;color:var(--red);text-align:right}
+.add-person-row{margin-top:8px}
+
+.fin-box{margin-top:12px;padding:10px 12px;background:#FFFBEB;border-radius:9px;border:1px solid #FDE68A;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.fin-lbl{font-size:11px;color:var(--amber);font-weight:800;white-space:nowrap}
+.fin-desc-input{flex:1;min-width:150px;border:none;border-bottom:1px solid #FDE68A;background:transparent;font-family:inherit;font-size:11px;color:var(--n);outline:none}
+.inc-subtotal{display:flex;justify-content:flex-end;gap:20px;margin-top:10px;font-size:11px;color:var(--mid)}
+.inc-subtotal strong{color:var(--red)}
+
+/* ── SUMMARY ── */
+.kpi3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.kpi3-card{border-radius:14px;padding:20px;border:2px solid}
+.kpi3-eyebrow{font-size:9px;font-weight:900;letter-spacing:2px;margin-bottom:6px}
+.kpi3-val{font-size:28px;font-weight:900;letter-spacing:-.5px}
+.kpi3-sub{font-size:12px;margin-top:5px;font-weight:700}
+.kpi3-sub2{font-size:11px;margin-top:2px;color:var(--mid)}
+
+.breakdown-card{background:var(--w);border-radius:14px;padding:20px;border:1px solid var(--line);margin-bottom:16px}
+.breakdown-title{font-size:14px;font-weight:900;color:var(--n);margin-bottom:14px}
+.breakdown-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;margin-bottom:7px;border:1px solid}
+.breakdown-row-lbl{font-size:13px;color:var(--n)}
+.breakdown-row-val{font-size:16px;font-weight:900}
+.breakdown-net{display:flex;justify-content:space-between;align-items:center;padding:13px 12px;border-radius:10px;margin-top:6px;border:2px solid}
+.breakdown-net-lbl{font-size:14px;font-weight:800;color:var(--n)}
+.breakdown-net-val{font-size:24px;font-weight:900}
+
+.dark-kpi{background:var(--n);border-radius:14px;padding:20px;text-align:center}
+.dark-eyebrow{font-size:9px;color:#94A3B8;letter-spacing:2px;margin-bottom:8px}
+.dark-val{font-size:40px;font-weight:900}
+.dark-sub{font-size:11px;color:#94A3B8;margin-top:5px}
+.dark-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+
+.cat-progress{margin-bottom:10px}
+.cat-progress-hdr{display:flex;justify-content:space-between;margin-bottom:4px}
+.progress-bg{height:8px;border-radius:99px;background:var(--mist);overflow:hidden}
+.progress-fill{height:100%;border-radius:99px;transition:width .4s}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .tg{grid-template-columns:1fr 100px 60px 60px 60px 60px 80px 24px}
+  .kpi3{grid-template-columns:1fr}
+  .dark-grid{grid-template-columns:1fr}
+  .hdr-kpis{gap:6px}
+  .hdr-kpi{min-width:90px}
+}
+@media(max-width:600px){
+  .site-hdr{padding:12px 16px}
+  .content{padding:16px}
+  .tg{grid-template-columns:1fr 80px 55px 55px 55px 55px 70px 24px;font-size:11px}
+}
+
+/* ── PRINT ── */
+@media print{
+  .site-hdr{position:relative}
+  .persons-bar,.tab-bar{display:none}
+  .pane{display:block!important}
+  .btn,.del-btn,.pill-del,.add-person-btn,.add-person-row{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- STICKY HEADER -->
+<header class="site-hdr">
+  <div class="logo-area">
+    <div class="logo-dot"></div>
+    <div>
+      <div class="site-sub">ALPINEO × LUCCA</div>
+      <div class="site-title">Calculateur ROI — SIRH</div>
+    </div>
+  </div>
+  <div class="hdr-kpis" id="hdr-kpis"></div>
+</header>
+
+<!-- PERSONS BAR -->
+<div class="persons-bar" id="persons-bar"></div>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('tasks')">⏱ Gains de temps</button>
+  <button class="tab-btn" onclick="switchTab('incidents')">⚠️ Incidents évités</button>
+  <button class="tab-btn" onclick="switchTab('summary')">📊 Synthèse ROI</button>
+</div>
+
+<!-- CONTENT PANES -->
+<div class="content">
+
+  <!-- TASKS PANE -->
+  <div class="pane active" id="pane-tasks">
+    <div class="section-hdr">
+      <div>
+        <div class="section-title">Tâches manuelles — Gain de temps avec Lucca</div>
+        <div class="section-desc">Modifiez les durées et fréquences selon votre réalité. Tout se recalcule en temps réel.</div>
+      </div>
+      <button class="btn btn-green" onclick="addTask()">＋ Ajouter une tâche</button>
+    </div>
+    <div id="tasks-body"></div>
+    <div class="tot-bar">
+      <span class="tot-bar-lbl">Total gains de temps mensuels</span>
+      <span class="tot-bar-val" id="tasks-total-val" style="color:var(--blue)">—</span>
+    </div>
+  </div>
+
+  <!-- INCIDENTS PANE -->
+  <div class="pane" id="pane-incidents">
+    <div class="section-hdr">
+      <div>
+        <div class="section-title">Incidents — Coûts évités grâce à Lucca</div>
+        <div class="section-desc">Chaque situation réelle chez Alpineo : coût RH (temps × taux) + coût financier direct. Cochez "Evité avec Lucca" pour inclure dans le ROI.</div>
+      </div>
+      <button class="btn btn-red" onclick="addIncident()">＋ Ajouter un incident</button>
+    </div>
+    <div id="incidents-body"></div>
+    <div class="tot-bar" style="border-color:var(--redb)">
+      <span class="tot-bar-lbl" style="color:var(--red)">Total incidents évités annuellement</span>
+      <span class="tot-bar-val" id="inc-total-val" style="color:var(--red)">—</span>
+    </div>
+  </div>
+
+  <!-- SUMMARY PANE -->
+  <div class="pane" id="pane-summary">
+    <div class="section-hdr">
+      <div><div class="section-title">Synthèse ROI — Lucca pour Alpineo</div></div>
+      <button class="btn btn-outline" onclick="window.print()">🖨 Imprimer</button>
+    </div>
+    <div id="summary-body"></div>
+  </div>
+
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────
+const LUCCA_ANNUAL = 17555;
+const IMPL_COST    = 6000;
+
+const CAT_COLORS = {
+  Onboarding:"#2563EB", Absences:"#0891B2",
+  Bulletins:"#059669",  Paie:"#7C3AED", Entretiens:"#D97706"
+};
+
+// ── STATE ──────────────────────────────────────────────────────
+let persons = [
+  {id:"alex", name:"Alexandre", rate:30.58, color:"#2563EB"},
+  {id:"lou",  name:"Lou",       rate:11.95, color:"#059669"},
+];
+
+let tasks = [
+  {id:n(),name:"Lancement & vérification dossier",    person:"alex",freq:7, av:35,ap:18,cat:"Onboarding"},
+  {id:n(),name:"Récupération & contrôle documents",   person:"lou", freq:7, av:45,ap:20,cat:"Onboarding"},
+  {id:n(),name:"Relances documents manquants",         person:"lou", freq:7, av:25,ap:5, cat:"Onboarding"},
+  {id:n(),name:"Contrôle IBAN / CNI / adresse",       person:"lou", freq:7, av:25,ap:15,cat:"Onboarding"},
+  {id:n(),name:"Création dossier & saisie Boond",     person:"alex",freq:7, av:40,ap:12,cat:"Onboarding"},
+  {id:n(),name:"Prépa paie / transmission fiduciaire", person:"alex",freq:7, av:45,ap:18,cat:"Onboarding"},
+  {id:n(),name:"Suivi & questions avant arrivée",     person:"lou", freq:7, av:30,ap:12,cat:"Onboarding"},
+  {id:n(),name:"Saisie absences dans Boond",          person:"lou", freq:80,av:5, ap:0, cat:"Absences"},
+  {id:n(),name:"Export absences & retraitement",      person:"lou", freq:1, av:30,ap:5, cat:"Absences"},
+  {id:n(),name:"Réponses questions solde congés",     person:"lou", freq:1, av:45,ap:10,cat:"Absences"},
+  {id:n(),name:"Distribution bulletins CH / PT / LU", person:"alex",freq:1, av:90,ap:10,cat:"Bulletins"},
+  {id:n(),name:"Gestion relances bulletins perdus",   person:"lou", freq:1, av:30,ap:0, cat:"Bulletins"},
+  {id:n(),name:"Consolidation variables de paie (EVP)",person:"alex",freq:1, av:90,ap:30,cat:"Paie"},
+  {id:n(),name:"Relances managers pour variables",    person:"lou", freq:1, av:45,ap:5, cat:"Paie"},
+  {id:n(),name:"Contrôle bulletins & réponses cabinet",person:"alex",freq:1,av:60,ap:30,cat:"Paie"},
+  {id:n(),name:"Suivi entretiens (invit, docs, relances)",person:"lou",freq:12,av:30,ap:5,cat:"Entretiens"},
+];
+
+let incidents = [
+  {
+    id:n(), avoided:true, freq:1,
+    name:"Salarié conteste solde CP sur STC — risque prud'homal",
+    items:[
+      {id:n(),personId:"alex",label:"Analyse dossier, réponses juridiques, négociation",hours:8},
+      {id:n(),personId:"lou", label:"Recherche documents, historique paie",hours:4},
+      {id:n(),personId:"ext", label:"Laure (DRH externe, conseil + rédaction)",hours:3,rate:75},
+      {id:n(),personId:"ext", label:"Directeur Paul (réunion négociation)",hours:4,rate:80},
+      {id:n(),personId:"ext", label:"Directeur Anselme (validation)",hours:2,rate:80},
+    ],
+    financial:1500, financialLabel:"Régularisation CP + provisions risque prud'homal"
+  },
+  {
+    id:n(), avoided:true, freq:2,
+    name:"Trop-perçu de paie (sortie mal transmise au cabinet)",
+    items:[
+      {id:n(),personId:"alex",label:"Correction, communication collab, suivi remboursement",hours:3},
+      {id:n(),personId:"lou", label:"Assistance RH, vérification bulletins",hours:1.5},
+    ],
+    financial:800, financialLabel:"Somme versée à tort (récupération difficile)"
+  },
+  {
+    id:n(), avoided:true, freq:1,
+    name:"Période d'essai loupée — salarié confirmé par défaut",
+    items:[
+      {id:n(),personId:"alex",label:"Gestion de la situation complexe, plan d'action",hours:6},
+      {id:n(),personId:"ext", label:"Directeur (réunion de crise + décisions)",hours:3,rate:80},
+    ],
+    financial:3000, financialLabel:"Risque RH + coût maintien salarié non souhaité"
+  },
+  {
+    id:n(), avoided:true, freq:2,
+    name:"Bulletin de paie envoyé au mauvais salarié",
+    items:[
+      {id:n(),personId:"alex",label:"Gestion incident, communication, mesures correctives",hours:2},
+      {id:n(),personId:"lou", label:"Vérification envois, correctifs",hours:1},
+    ],
+    financial:0, financialLabel:""
+  },
+  {
+    id:n(), avoided:true, freq:1,
+    name:"Fichier EVP à refaire 15 fois (erreurs données variables)",
+    items:[
+      {id:n(),personId:"alex",label:"Retraitements, corrections, envois multiples",hours:4},
+      {id:n(),personId:"lou", label:"Collecte données manquantes, relances",hours:3},
+    ],
+    financial:0, financialLabel:""
+  },
+];
+
+// ── HELPERS ────────────────────────────────────────────────────
+function n(){return Math.random().toString(36).slice(2,9)}
+function fmt(v){return Math.round(v).toLocaleString("fr-FR")}
+function fmtD(v){return v.toFixed(2).replace(".",",")}
+function getRate(pid,override){
+  if(override!=null)return override;
+  if(pid==="ext")return 75;
+  return persons.find(p=>p.id===pid)?.rate||0;
+}
+function getColor(pid){
+  if(pid==="ext")return "#D97706";
+  return persons.find(p=>p.id===pid)?.color||"#64748B";
+}
+function getPersonName(pid){
+  if(pid==="ext")return "Externe";
+  return persons.find(p=>p.id===pid)?.name||"?";
+}
+
+function calcTask(t){
+  const rate=getRate(t.person);
+  const gainMin=Math.max(0,t.av-t.ap);
+  const gainTot=gainMin*t.freq;
+  const gainEur=(gainTot/60)*rate;
+  return{...t,rate,gainMin,gainTot,gainEur};
+}
+function calcIncident(inc){
+  const rhCost=inc.items.reduce((s,it)=>s+it.hours*getRate(it.personId,it.rate),0);
+  const perInc=rhCost+(inc.financial||0);
+  const annualTotal=inc.avoided?perInc*inc.freq:0;
+  return{...inc,rhCost,perInc,annualTotal};
+}
+
+function totals(){
+  const tc=tasks.map(calcTask);
+  const ic=incidents.map(calcIncident);
+  const gainM=tc.reduce((s,t)=>s+t.gainEur,0);
+  const gainY=gainM*12;
+  const incY=ic.reduce((s,i)=>s+i.annualTotal,0);
+  const gross=gainY+incY;
+  const net=gross-LUCCA_ANNUAL;
+  const netY1=net-IMPL_COST;
+  const months=gross>0?((LUCCA_ANNUAL+IMPL_COST)/(gross/12)):Infinity;
+  return{gainM,gainY,incY,gross,net,netY1,months,tc,ic};
+}
+
+// ── RENDER FUNCTIONS ───────────────────────────────────────────
+
+function renderAll(){
+  renderHeader();
+  renderPersons();
+  renderTasks();
+  renderIncidents();
+  renderSummary();
+}
+
+function renderHeader(){
+  const{gainY,incY,net,months}=totals();
+  const kpis=[
+    {l:"Gain temps /an",   v:`${fmt(gainY)} €`,    c:"#60A5FA"},
+    {l:"Incidents /an",    v:`${fmt(incY)} €`,      c:"#34D399"},
+    {l:"ROI net /an",      v:`${net>=0?"+":""}${fmt(net)} €`, c:net>=0?"#FCD34D":"#F87171"},
+    {l:"Retour invest.",   v:isFinite(months)&&months>0?`${months.toFixed(1)} mois`:"< 12 mois", c:"#F4622A"},
+  ];
+  document.getElementById("hdr-kpis").innerHTML=kpis.map(k=>`
+    <div class="hdr-kpi">
+      <div class="hdr-kpi-val" style="color:${k.c}">${k.v}</div>
+      <div class="hdr-kpi-lbl">${k.l}</div>
+    </div>`).join("");
+}
+
+function renderPersons(){
+  const bar=document.getElementById("persons-bar");
+  const avgRate=persons.reduce((s,p)=>s+p.rate,0)/Math.max(1,persons.length);
+  bar.innerHTML=`
+    <span class="pb-label">TAUX HORAIRES</span>
+    ${persons.map(p=>`
+      <div class="person-pill" style="background:${p.color}12;border-color:${p.color}40">
+        <div class="dot" style="background:${p.color}"></div>
+        <input type="text" value="${p.name}" style="color:${p.color}"
+          onchange="updPerson('${p.id}','name',this.value)">
+        <div class="rate-wrap">
+          <input type="number" value="${p.rate}" step="0.01" min="0"
+            onchange="updPerson('${p.id}','rate',parseFloat(this.value)||0)">
+          <span class="unit">€/h</span>
+        </div>
+        ${persons.length>1?`<button class="pill-del" onclick="delPerson('${p.id}')">×</button>`:""}
+      </div>`).join("")}
+    <button class="add-person-btn" onclick="addPerson()">+ Personne</button>
+    <span class="avg-note">Coût moy. équipe : <strong>${fmtD(avgRate)} €/h</strong></span>`;
+}
+
+function renderTasks(){
+  const tc=tasks.map(calcTask);
+  const cats=[...new Set(tasks.map(t=>t.cat))];
+  const totalM=tc.reduce((s,t)=>s+t.gainEur,0);
+  const totalY=totalM*12;
+  document.getElementById("tasks-total-val").textContent=`+${fmt(totalM)} €/mois · +${fmt(totalY)} €/an`;
+
+  const personSel=persons.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+  const catSel=["Onboarding","Absences","Bulletins","Paie","Entretiens"]
+    .map(c=>`<option value="${c}">${c}</option>`).join("");
+
+  const grid="tg";
+  const hdrCols="grid-template-columns:2.5fr 120px 70px 70px 70px 70px 95px 28px";
+
+  let html="";
+  cats.forEach(cat=>{
+    const ct=tc.filter(t=>t.cat===cat);
+    const catM=ct.reduce((s,t)=>s+t.gainEur,0);
+    const cc=CAT_COLORS[cat]||"#64748B";
+    html+=`
+      <div class="cat-block">
+        <div class="cat-hdr">
+          <div class="cat-hdr-left">
+            <span class="cat-badge" style="background:${cc}30;color:${cc}">${cat.toUpperCase()}</span>
+            <span class="cat-name">${cat}</span>
+          </div>
+          <span class="cat-hdr-right">${fmt(catM)} €/mois · <strong style="color:#60A5FA">${fmt(catM*12)} €/an</strong></span>
+        </div>
+        <div class="cat-table">
+          <div class="t-head" style="${hdrCols}">
+            <span>TÂCHE</span><span>RESPONSABLE</span>
+            <span style="text-align:center">FRÉQ./MOIS</span>
+            <span style="text-align:center">AVANT (min)</span>
+            <span style="text-align:center">APRÈS (min)</span>
+            <span style="text-align:center">GAIN (min)</span>
+            <span style="text-align:right">VALEUR/MOIS</span>
+            <span></span>
+          </div>
+          ${ct.map(t=>`
+            <div class="t-row" style="${hdrCols}">
+              <input class="t-name" value="${t.name}"
+                onchange="updTask('${t.id}','name',this.value)">
+              <select class="t-sel" onchange="updTask('${t.id}','person',this.value)">
+                ${persons.map(p=>`<option value="${p.id}"${t.person===p.id?" selected":""}>${p.name}</option>`).join("")}
+              </select>
+              <div style="text-align:center">
+                <input class="ni" type="number" value="${t.freq}" min="0"
+                  onchange="updTask('${t.id}','freq',+this.value)">
+              </div>
+              <div style="text-align:center">
+                <input class="ni" type="number" value="${t.av}" min="0"
+                  onchange="updTask('${t.id}','av',+this.value)">
+              </div>
+              <div style="text-align:center">
+                <input class="ni" type="number" value="${t.ap}" min="0"
+                  onchange="updTask('${t.id}','ap',+this.value)">
+              </div>
+              <div class="gain-val" style="color:${t.gainMin>0?'var(--green)':'var(--mid)'}">
+                ${t.gainMin>0?"+"+fmt(t.gainTot):"0"}
+              </div>
+              <div class="month-val" style="color:${t.gainEur>0?'var(--blue)':'var(--mid)'}">
+                ${t.gainEur>0?"+"+fmtD(t.gainEur)+" €":"—"}
+              </div>
+              <button class="del-btn" onclick="delTask('${t.id}')">×</button>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  });
+  document.getElementById("tasks-body").innerHTML=html;
+}
+
+function renderIncidents(){
+  const ic=incidents.map(calcIncident);
+  const totalY=ic.reduce((s,i)=>s+i.annualTotal,0);
+  document.getElementById("inc-total-val").textContent=`${fmt(totalY)} €/an`;
+
+  const personSel=persons.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+  const itemGrid="grid-template-columns:130px 1fr 80px 70px 80px 26px";
+
+  let html=ic.map(inc=>`
+    <div class="inc-card${inc.avoided?"":" disabled"}">
+      <div class="inc-hdr">
+        <input class="inc-name-input" value="${inc.name}" placeholder="Nom de l'incident…"
+          onchange="updInc('${inc.id}','name',this.value)">
+        <div class="inc-freq-wrap">
+          <span>Fréq./an :</span>
+          <input class="ni" type="number" value="${inc.freq}" min="0"
+            onchange="updInc('${inc.id}','freq',+this.value)">
+        </div>
+        <label class="inc-avoid-wrap">
+          <input type="checkbox" ${inc.avoided?"checked":""} 
+            onchange="updInc('${inc.id}','avoided',this.checked)">
+          <span>Evité avec Lucca</span>
+        </label>
+        <div class="inc-total-badge">
+          <div class="big">${fmt(inc.annualTotal)} €/an</div>
+          <div class="sm">coût total évité</div>
+        </div>
+        <button class="del-btn" onclick="delIncident('${inc.id}')">×</button>
+      </div>
+      <div class="inc-body">
+        <div class="items-label">PERSONNES IMPLIQUÉES</div>
+        ${inc.items.map(it=>{
+          const r=getRate(it.personId,it.rate);
+          const cost=it.hours*r;
+          const pc=getColor(it.personId);
+          return`<div class="item-row" style="${itemGrid}">
+            <select class="t-sel" onchange="updItem('${inc.id}','${it.id}','personId',this.value)">
+              ${persons.map(p=>`<option value="${p.id}"${it.personId===p.id?" selected":""}>${p.name}</option>`).join("")}
+              <option value="ext"${it.personId==="ext"?" selected":""}>Externe</option>
+            </select>
+            <input class="item-lbl-input" value="${it.label}" placeholder="Description du temps passé…"
+              onchange="updItem('${inc.id}','${it.id}','label',this.value)">
+            ${it.personId==="ext"
+              ?`<div style="display:flex;align-items:center;gap:3px">
+                  <input class="ni" type="number" value="${it.rate||75}" step="5" min="0"
+                    onchange="updItem('${inc.id}','${it.id}','rate',+this.value)">
+                  <span style="font-size:10px;color:var(--mid)">€/h</span>
+                </div>`
+              :`<div class="item-rate-box" style="color:${pc}">${fmtD(r)} €/h</div>`
+            }
+            <input class="ni" type="number" value="${it.hours}" step="0.5" min="0"
+              onchange="updItem('${inc.id}','${it.id}','hours',+this.value)">
+            <div class="item-cost-box">${fmtD(cost)} €</div>
+            <button class="del-btn" onclick="delItem('${inc.id}','${it.id}')">×</button>
+          </div>`;
+        }).join("")}
+        <div class="add-person-row">
+          <button class="btn btn-outline" onclick="addItem('${inc.id}')" style="font-size:11px;padding:4px 10px">+ Personne</button>
+        </div>
+        <div class="fin-box">
+          <span class="fin-lbl">💰 Coût financier direct</span>
+          <input class="ni" type="number" value="${inc.financial||0}" min="0"
+            onchange="updInc('${inc.id}','financial',+this.value)">
+          <span style="font-size:10px;color:var(--amber)">€</span>
+          <input class="fin-desc-input" value="${inc.financialLabel||""}"
+            placeholder="Description (ex : régularisation, indemnité…)"
+            onchange="updInc('${inc.id}','financialLabel',this.value)">
+        </div>
+        <div class="inc-subtotal">
+          <span>Coût RH par incident : <strong>${fmt(inc.rhCost)} €</strong></span>
+          <span>+ Coût financier : <strong>${fmt(inc.financial||0)} €</strong></span>
+          <span>= Par incident : <strong>${fmt(inc.perInc)} €</strong></span>
+          <span>× ${inc.freq}/an = <strong>${fmt(inc.annualTotal)} €/an évités</strong></span>
+        </div>
+      </div>
+    </div>`).join("");
+  document.getElementById("incidents-body").innerHTML=html;
+}
+
+function renderSummary(){
+  const{gainM,gainY,incY,gross,net,netY1,months,tc}=totals();
+  const totalM=tc.reduce((s,t)=>s+t.gainEur,0);
+  const cats=[...new Set(tasks.map(t=>t.cat))];
+
+  let html=`
+    <div class="kpi3">
+      ${[
+        {e:"GAINS DE TEMPS",v:`${fmt(gainY)} €/an`,s:`${fmt(gainM)} €/mois`,s2:"Tâches RH automatisées",c:"var(--blue)",bg:"var(--bluel)",bc:"var(--blueb)"},
+        {e:"INCIDENTS ÉVITÉS",v:`${fmt(incY)} €/an`,s:`${incidents.filter(i=>i.avoided).length} incidents couverts`,s2:"Coûts RH + financiers directs",c:"var(--red)",bg:"var(--redl)",bc:"var(--redb)"},
+        {e:"ROI TOTAL BRUT",v:`${fmt(gross)} €/an`,s:`vs ${fmt(LUCCA_ANNUAL)} €/an Lucca`,s2:"Temps libéré + incidents évités",c:"var(--green)",bg:"var(--greenl)",bc:"var(--greenb)"},
+      ].map(k=>`<div class="kpi3-card" style="background:${k.bg};border-color:${k.bc}">
+        <div class="kpi3-eyebrow" style="color:${k.c}">${k.e}</div>
+        <div class="kpi3-val" style="color:${k.c}">${k.v}</div>
+        <div class="kpi3-sub" style="color:${k.c}">${k.s}</div>
+        <div class="kpi3-sub2">${k.s2}</div>
+      </div>`).join("")}
+    </div>
+
+    <div class="breakdown-card">
+      <div class="breakdown-title">Coût vs Gain — Analyse Année 1</div>
+      ${[
+        {l:"— Licences Lucca annuelles",v:`-${fmt(LUCCA_ANNUAL)} €`,c:"var(--red)",bg:"var(--redl)",bc:"var(--redb)"},
+        {l:"— Implémentation (estimation conservative)",v:`-${fmt(IMPL_COST)} €`,c:"#F97316",bg:"#FFF7ED",bc:"#FED7AA"},
+        {l:"+ Gains de temps (coût horaire équipe)",v:`+${fmt(gainY)} €`,c:"var(--blue)",bg:"var(--bluel)",bc:"var(--blueb)"},
+        {l:"+ Incidents évités (coût RH + financier)",v:`+${fmt(incY)} €`,c:"var(--green)",bg:"var(--greenl)",bc:"var(--greenb)"},
+      ].map(r=>`<div class="breakdown-row" style="background:${r.bg};border-color:${r.bc}">
+        <span class="breakdown-row-lbl">${r.l}</span>
+        <span class="breakdown-row-val" style="color:${r.c}">${r.v}</span>
+      </div>`).join("")}
+      <div class="breakdown-net" style="background:${netY1>=0?"var(--greenl)":"var(--redl)"};border-color:${netY1>=0?"var(--greenb)":"var(--redb)"}">
+        <span class="breakdown-net-lbl">= ROI NET Année 1 (après licences + implémentation)</span>
+        <span class="breakdown-net-val" style="color:${netY1>=0?"var(--green)":"var(--red)"}">
+          ${netY1>=0?"+":""}${fmt(netY1)} €
+        </span>
+      </div>
+    </div>
+
+    <div class="dark-grid">
+      <div class="dark-kpi">
+        <div class="dark-eyebrow">RETOUR SUR INVESTISSEMENT</div>
+        <div class="dark-val" style="color:${months<=18?"var(--o)":"#F87171"}">
+          ${isFinite(months)&&months>0?months.toFixed(1)+" mois":"< 1 mois"}
+        </div>
+        <div class="dark-sub">Licences ${fmt(LUCCA_ANNUAL)} € + implémentation ${fmt(IMPL_COST)} €</div>
+      </div>
+      <div class="dark-kpi">
+        <div class="dark-eyebrow">COÛT LUCCA / COLLABORATEUR</div>
+        <div class="dark-val" style="color:#fff">135 €/an</div>
+        <div class="dark-sub">Base 130 collabs · ${fmtD(LUCCA_ANNUAL/12)} €/mois total</div>
+      </div>
+    </div>
+
+    <div class="breakdown-card">
+      <div class="breakdown-title">Détail gains de temps par catégorie</div>
+      ${cats.map(cat=>{
+        const ct=tc.filter(t=>t.cat===cat);
+        const cM=ct.reduce((s,t)=>s+t.gainEur,0);
+        const pct=totalM>0?(cM/totalM*100):0;
+        const cc=CAT_COLORS[cat]||"#64748B";
+        return`<div class="cat-progress">
+          <div class="cat-progress-hdr">
+            <div style="display:flex;align-items:center;gap:7px">
+              <span class="cat-badge" style="background:${cc}20;color:${cc};border:1px solid ${cc}30">${cat}</span>
+              <span style="font-size:12px;font-weight:700">${cat}</span>
+            </div>
+            <span style="font-size:13px;font-weight:800;color:var(--blue)">${fmt(cM)} €/mois · ${fmt(cM*12)} €/an</span>
+          </div>
+          <div class="progress-bg">
+            <div class="progress-fill" style="width:${pct}%;background:${cc}"></div>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+
+    <div class="breakdown-card" style="background:var(--redl);border-color:var(--redb)">
+      <div class="breakdown-title" style="color:var(--red)">Détail incidents évités</div>
+      ${incidents.filter(i=>i.avoided).map(inc=>{
+        const calc=calcIncident(inc);
+        return`<div class="breakdown-row" style="background:var(--w);border-color:var(--redb)">
+          <div>
+            <span class="breakdown-row-lbl">${inc.name}</span>
+            <span style="font-size:10px;color:var(--mid);margin-left:8px">×${inc.freq}/an</span>
+          </div>
+          <span class="breakdown-row-val" style="color:var(--red)">-${fmt(calc.annualTotal)} €/an</span>
+        </div>`;
+      }).join("")}
+    </div>`;
+
+  document.getElementById("summary-body").innerHTML=html;
+}
+
+// ── MUTATIONS ──────────────────────────────────────────────────
+function updPerson(id,f,v){persons=persons.map(p=>p.id===id?{...p,[f]:f==="rate"?parseFloat(v)||0:v}:p);renderAll()}
+function addPerson(){persons=[...persons,{id:n(),name:"Externe",rate:75,color:"#D97706"}];renderAll()}
+function delPerson(id){if(persons.length<2)return;persons=persons.filter(p=>p.id!==id);renderAll()}
+
+function updTask(id,f,v){tasks=tasks.map(t=>t.id===id?{...t,[f]:v}:t);renderAll()}
+function addTask(){tasks=[...tasks,{id:n(),name:"Nouvelle tâche",person:persons[0].id,freq:1,av:30,ap:0,cat:"Paie"}];renderAll()}
+function delTask(id){tasks=tasks.filter(t=>t.id!==id);renderAll()}
+
+function updInc(id,f,v){incidents=incidents.map(i=>i.id===id?{...i,[f]:v}:i);renderAll()}
+function addIncident(){
+  incidents=[...incidents,{id:n(),avoided:true,freq:1,name:"Nouvel incident",items:[],financial:0,financialLabel:""}];
+  renderAll();
+}
+function delIncident(id){incidents=incidents.filter(i=>i.id!==id);renderAll()}
+
+function addItem(incId){
+  incidents=incidents.map(i=>i.id===incId?{...i,items:[...i.items,{id:n(),personId:persons[0].id,label:"",hours:1}]}:i);
+  renderAll();
+}
+function updItem(incId,itemId,f,v){
+  incidents=incidents.map(i=>i.id===incId?{...i,items:i.items.map(it=>it.id===itemId?{...it,[f]:v}:it)}:i);
+  renderAll();
+}
+function delItem(incId,itemId){
+  incidents=incidents.map(i=>i.id===incId?{...i,items:i.items.filter(it=>it.id!==itemId)}:i);
+  renderAll();
+}
+
+// ── TAB SWITCH ────────────────────────────────────────────────
+function switchTab(t){
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelector(`[onclick="switchTab('${t}')"]`).classList.add("active");
+  document.querySelectorAll(".pane").forEach(p=>p.classList.remove("active"));
+  document.getElementById(`pane-${t}`).classList.add("active");
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
