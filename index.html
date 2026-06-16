@@ -298,11 +298,11 @@ let incidents = [
     id:n(), avoided:true, freq:1,
     name:"Salarié conteste solde CP sur STC — risque prud'homal",
     items:[
-      {id:n(),personId:"alex",label:"Analyse dossier, réponses juridiques, négociation",hours:8},
-      {id:n(),personId:"lou", label:"Recherche documents, historique paie",hours:4},
-      {id:n(),personId:"ext", label:"Laure (DRH externe, conseil + rédaction)",hours:3,rate:75},
-      {id:n(),personId:"ext", label:"Directeur Paul (réunion négociation)",hours:4,rate:80},
-      {id:n(),personId:"ext", label:"Directeur Anselme (validation)",hours:2,rate:80},
+      {id:n(),personId:"alex",mode:"single",label:"Analyse dossier, réponses juridiques, négociation",hours:8},
+      {id:n(),personId:"lou",mode:"single", label:"Recherche documents, historique paie",hours:4},
+      {id:n(),personId:"ext",mode:"single", label:"Laure (DRH externe, conseil + rédaction)",hours:3,rate:75},
+      {id:n(),personId:"ext",mode:"single", label:"Directeur Paul (réunion négociation)",hours:4,rate:80},
+      {id:n(),personId:"ext",mode:"single", label:"Directeur Anselme (validation)",hours:2,rate:80},
     ],
     financial:1500, financialLabel:"Régularisation CP + provisions risque prud'homal"
   },
@@ -310,8 +310,8 @@ let incidents = [
     id:n(), avoided:true, freq:2,
     name:"Trop-perçu de paie (sortie mal transmise au cabinet)",
     items:[
-      {id:n(),personId:"alex",label:"Correction, communication collab, suivi remboursement",hours:3},
-      {id:n(),personId:"lou", label:"Assistance RH, vérification bulletins",hours:1.5},
+      {id:n(),personId:"alex",mode:"single",label:"Correction, communication collab, suivi remboursement",hours:3},
+      {id:n(),personId:"lou",mode:"single", label:"Assistance RH, vérification bulletins",hours:1.5},
     ],
     financial:800, financialLabel:"Somme versée à tort (récupération difficile)"
   },
@@ -319,8 +319,8 @@ let incidents = [
     id:n(), avoided:true, freq:1,
     name:"Période d'essai loupée — salarié confirmé par défaut",
     items:[
-      {id:n(),personId:"alex",label:"Gestion de la situation complexe, plan d'action",hours:6},
-      {id:n(),personId:"ext", label:"Directeur (réunion de crise + décisions)",hours:3,rate:80},
+      {id:n(),personId:"alex",mode:"single",label:"Gestion de la situation complexe, plan d'action",hours:6},
+      {id:n(),personId:"ext",mode:"single", label:"Directeur (réunion de crise + décisions)",hours:3,rate:80},
     ],
     financial:3000, financialLabel:"Risque RH + coût maintien salarié non souhaité"
   },
@@ -328,8 +328,8 @@ let incidents = [
     id:n(), avoided:true, freq:2,
     name:"Bulletin de paie envoyé au mauvais salarié",
     items:[
-      {id:n(),personId:"alex",label:"Gestion incident, communication, mesures correctives",hours:2},
-      {id:n(),personId:"lou", label:"Vérification envois, correctifs",hours:1},
+      {id:n(),personId:"alex",mode:"single",label:"Gestion incident, communication, mesures correctives",hours:2},
+      {id:n(),personId:"lou",mode:"single", label:"Vérification envois, correctifs",hours:1},
     ],
     financial:0, financialLabel:""
   },
@@ -337,8 +337,8 @@ let incidents = [
     id:n(), avoided:true, freq:1,
     name:"Fichier EVP à refaire 15 fois (erreurs données variables)",
     items:[
-      {id:n(),personId:"alex",label:"Retraitements, corrections, envois multiples",hours:4},
-      {id:n(),personId:"lou", label:"Collecte données manquantes, relances",hours:3},
+      {id:n(),personId:"alex",mode:"single",label:"Retraitements, corrections, envois multiples",hours:4},
+      {id:n(),personId:"lou",mode:"single", label:"Collecte données manquantes, relances",hours:3},
     ],
     financial:0, financialLabel:""
   },
@@ -362,15 +362,34 @@ function getPersonName(pid){
   return persons.find(p=>p.id===pid)?.name||"?";
 }
 
+function taskEffectiveRate(t){
+  if(t.mode==="tous"){
+    return persons.reduce((s,p)=>{
+      const pct=(t.pcts&&t.pcts[p.id]!=null)?t.pcts[p.id]:Math.round(100/persons.length);
+      return s+(pct/100)*getRate(p.id);
+    },0);
+  }
+  return getRate(t.person);
+}
 function calcTask(t){
-  const rate=getRate(t.person);
+  const rate=taskEffectiveRate(t);
   const gainMin=Math.max(0,t.av-t.ap);
   const gainTot=gainMin*t.freq;
   const gainEur=(gainTot/60)*rate;
   return{...t,rate,gainMin,gainTot,gainEur};
 }
+function itemCost(it){
+  if(it.mode==="tous"){
+    // sum across all persons by their %
+    return persons.reduce((s,p)=>{
+      const pct=(it.pcts&&it.pcts[p.id]!=null?it.pcts[p.id]:Math.round(100/persons.length));
+      return s+(it.hours*(pct/100)*getRate(p.id));
+    },0);
+  }
+  return it.hours*getRate(it.personId,it.rate);
+}
 function calcIncident(inc){
-  const rhCost=inc.items.reduce((s,it)=>s+it.hours*getRate(it.personId,it.rate),0);
+  const rhCost=inc.items.reduce((s,it)=>s+itemCost(it),0);
   const perInc=rhCost+(inc.financial||0);
   const annualTotal=inc.avoided?perInc*inc.freq:0;
   return{...inc,rhCost,perInc,annualTotal};
@@ -447,7 +466,7 @@ function renderTasks(){
     .map(c=>`<option value="${c}">${c}</option>`).join("");
 
   const grid="tg";
-  const hdrCols="grid-template-columns:2.5fr 120px 70px 70px 70px 70px 95px 28px";
+  const hdrCols="grid-template-columns:2.2fr 160px 70px 70px 70px 70px 95px 28px";
 
   let html="";
   cats.forEach(cat=>{
@@ -473,37 +492,150 @@ function renderTasks(){
             <span style="text-align:right">VALEUR/MOIS</span>
             <span></span>
           </div>
-          ${ct.map(t=>`
-            <div class="t-row" style="${hdrCols}">
-              <input class="t-name" value="${t.name}"
-                onchange="updTask('${t.id}','name',this.value)">
-              <select class="t-sel" onchange="updTask('${t.id}','person',this.value)">
-                ${persons.map(p=>`<option value="${p.id}"${t.person===p.id?" selected":""}>${p.name}</option>`).join("")}
-              </select>
-              <div style="text-align:center">
-                <input class="ni" type="number" value="${t.freq}" min="0"
-                  onchange="updTask('${t.id}','freq',+this.value)">
-              </div>
-              <div style="text-align:center">
-                <input class="ni" type="number" value="${t.av}" min="0"
-                  onchange="updTask('${t.id}','av',+this.value)">
-              </div>
-              <div style="text-align:center">
-                <input class="ni" type="number" value="${t.ap}" min="0"
-                  onchange="updTask('${t.id}','ap',+this.value)">
-              </div>
-              <div class="gain-val" style="color:${t.gainMin>0?'var(--green)':'var(--mid)'}">
-                ${t.gainMin>0?"+"+fmt(t.gainTot):"0"}
-              </div>
-              <div class="month-val" style="color:${t.gainEur>0?'var(--blue)':'var(--mid)'}">
-                ${t.gainEur>0?"+"+fmtD(t.gainEur)+" €":"—"}
-              </div>
-              <button class="del-btn" onclick="delTask('${t.id}')">×</button>
-            </div>`).join("")}
+          ${ct.map(t=>renderTaskRow(t)).join("")}
         </div>
       </div>`;
   });
   document.getElementById("tasks-body").innerHTML=html;
+}
+
+// ── Render a single task row (extracted to avoid nested template literal issues)
+function renderTaskRow(t){
+  const isTous = t.mode === "tous";
+  const rate   = taskEffectiveRate(t);
+  const pc     = isTous ? "var(--amber)" : getColor(t.person);
+
+  // Person/mode selector
+  var opts = "";
+  persons.forEach(function(p){
+    var sel = (!isTous && t.person === p.id) ? " selected" : "";
+    opts += "<option value='" + p.id + "'" + sel + ">" + p.name + "</option>";
+  });
+  opts += "<option value='tous'" + (isTous ? " selected" : "") + ">Tous (%)</option>";
+  var selHtml = "<select class='t-sel' onchange=\"updTaskMode('" + t.id + "',this.value)\">" + opts + "</select>";
+
+  // Rate badge
+  var rateBadge = isTous
+    ? "<span style='font-size:9px;color:var(--amber);font-weight:800'>multi</span>"
+    : "<span style='font-size:10px;color:" + pc + ";font-weight:800'>" + fmtD(rate) + " €/h</span>";
+
+  // Grid with name | select+rate | freq | av | ap | gain | val | del
+  var row = "<div class='t-row' style='grid-template-columns:2.2fr 160px 70px 70px 70px 70px 95px 28px;display:grid;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--line)'>" +
+    "<input class='t-name' value='" + t.name.replace(/'/g,"&#39;") + "' onchange=\"updTask('" + t.id + "','name',this.value)\">" +
+    "<div style='display:flex;align-items:center;gap:5px'>" + selHtml + rateBadge + "</div>" +
+    "<div style='text-align:center'><input class='ni' type='number' value='" + t.freq + "' min='0' onchange=\"updTask('" + t.id + "','freq',+this.value)\"></div>" +
+    "<div style='text-align:center'><input class='ni' type='number' value='" + t.av + "' min='0' onchange=\"updTask('" + t.id + "','av',+this.value)\"></div>" +
+    "<div style='text-align:center'><input class='ni' type='number' value='" + t.ap + "' min='0' onchange=\"updTask('" + t.id + "','ap',+this.value)\"></div>" +
+    "<div style='text-align:center;font-weight:800;font-size:12px;color:" + (t.gainMin>0?"var(--green)":"var(--mid)") + "'>" + (t.gainMin>0 ? "+"+fmt(t.gainTot) : "0") + "</div>" +
+    "<div style='text-align:right;font-weight:800;font-size:13px;color:" + (t.gainEur>0?"var(--blue)":"var(--mid)") + "'>" + (t.gainEur>0 ? "+"+fmtD(t.gainEur)+" €" : "—") + "</div>" +
+    "<button class='del-btn' onclick=\"delTask('" + t.id + "')\">×</button>" +
+    "</div>";
+
+  // Percentage breakdown (only in "tous" mode)
+  var pctBlock = "";
+  if(isTous){
+    var inner = "<span style='font-size:10px;color:var(--amber);font-weight:800'>Répartition :</span>";
+    persons.forEach(function(p){
+      var def = Math.round(100 / persons.length);
+      var pct = (t.pcts && t.pcts[p.id] != null) ? t.pcts[p.id] : def;
+      inner +=
+        "<div style='display:flex;align-items:center;gap:5px'>" +
+        "<div style='width:8px;height:8px;border-radius:50%;background:" + getColor(p.id) + "'></div>" +
+        "<span style='font-size:11px;font-weight:700;color:" + getColor(p.id) + "'>" + p.name + "</span>" +
+        "<input class='ni' type='number' value='" + pct + "' min='0' max='100' style='width:52px'" +
+        " onchange=\"updTaskPct('" + t.id + "','" + p.id + "',+this.value)\">" +
+        "<span style='font-size:9px;color:var(--mid)'>% · " + fmtD(getRate(p.id)) + " €/h</span>" +
+        "</div>";
+    });
+    pctBlock = "<div style='padding:7px 14px 7px 24px;background:#FFFBEB;display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)'>" + inner + "</div>";
+  }
+
+  return "<div>" + row + pctBlock + "</div>";
+}
+
+function updTaskMode(id, v){
+  tasks = tasks.map(function(t){
+    if(t.id !== id) return t;
+    if(v === "tous") return Object.assign({}, t, {mode:"tous"});
+    return Object.assign({}, t, {mode:"single", person:v});
+  });
+  renderAll();
+}
+
+function updTaskPct(id, personId, v){
+  tasks = tasks.map(function(t){
+    if(t.id !== id) return t;
+    var pcts = Object.assign({}, t.pcts||{});
+    pcts[personId] = v;
+    return Object.assign({}, t, {pcts:pcts});
+  });
+  renderAll();
+}
+
+// ── Render a single incident item row (extracted to avoid nested template literal issues)
+function renderItem(incId, it){
+  const isTous = it.mode === "tous";
+  const isExt  = !isTous && it.personId === "ext";
+  const cost   = itemCost(it);
+  const r      = isTous ? 0 : getRate(it.personId, it.rate);
+  const pc     = isTous ? "var(--amber)" : getColor(it.personId);
+
+  // Build person selector options via concatenation
+  let opts = "";
+  persons.forEach(function(p){
+    var sel = (!isTous && !isExt && it.personId === p.id) ? " selected" : "";
+    opts += "<option value='" + p.id + "'" + sel + ">" + p.name + "</option>";
+  });
+  opts += "<option value='tous'" + (isTous ? " selected" : "") + ">Tous (répartition %)</option>";
+  opts += "<option value='ext'"  + (isExt  ? " selected" : "") + ">Externe</option>";
+  var sel = "<select class='t-sel' onchange=\"updItemMode('" + incId + "','" + it.id + "',this.value)\">" + opts + "</select>";
+
+  // Rate cell
+  var rateCell = "";
+  if(isExt){
+    rateCell = "<div style='display:flex;align-items:center;gap:2px'>" +
+      "<input class='ni' type='number' value='" + (it.rate||75) + "' step='5' min='0' style='width:50px'" +
+      " onchange=\"updItem('" + incId + "','" + it.id + "','rate',+this.value)\">" +
+      "<span style='font-size:9px;color:var(--mid)'>€/h</span></div>";
+  } else if(isTous){
+    rateCell = "<div style='font-size:10px;color:var(--amber);font-weight:700;text-align:center'>multi</div>";
+  } else {
+    rateCell = "<div style='font-size:11px;font-weight:700;color:" + pc + ";text-align:center'>" + fmtD(r) + " €/h</div>";
+  }
+
+  // Percentage block (only in "tous" mode)
+  var pctBlock = "";
+  if(isTous){
+    var pctInner = "<span style='font-size:10px;color:var(--amber);font-weight:800'>Répartition :</span>";
+    persons.forEach(function(p){
+      var def = Math.round(100 / persons.length);
+      var pct = (it.pcts && it.pcts[p.id] != null) ? it.pcts[p.id] : def;
+      pctInner +=
+        "<div style='display:flex;align-items:center;gap:5px'>" +
+        "<div style='width:8px;height:8px;border-radius:50%;background:" + getColor(p.id) + "'></div>" +
+        "<span style='font-size:11px;font-weight:700;color:" + getColor(p.id) + "'>" + p.name + "</span>" +
+        "<input class='ni' type='number' value='" + pct + "' min='0' max='100' style='width:52px'" +
+        " onchange=\"updPct('" + incId + "','" + it.id + "','" + p.id + "',+this.value)\">" +
+        "<span style='font-size:9px;color:var(--mid)'>% · " + fmtD(getRate(p.id)) + " €/h</span>" +
+        "</div>";
+    });
+    pctBlock = "<div style='margin:4px 0 6px;padding:8px 10px;background:#FFFBEB;border-radius:8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center'>" + pctInner + "</div>";
+  }
+
+  var cols = "140px 1fr " + (isExt ? "80px" : isTous ? "55px" : "70px") + " 68px 80px 26px";
+  var row =
+    "<div style='display:grid;grid-template-columns:" + cols + ";gap:8px;align-items:center;padding:7px 0'>" +
+    sel +
+    "<input class='item-lbl-input' value='" + it.label.replace(/'/g,"&#39;") + "' placeholder='Description du temps passé…'" +
+    " onchange=\"updItem('" + incId + "','" + it.id + "','label',this.value)\">" +
+    rateCell +
+    "<input class='ni' type='number' value='" + it.hours + "' step='0.5' min='0'" +
+    " onchange=\"updItem('" + incId + "','" + it.id + "','hours',+this.value)\">" +
+    "<div style='text-align:right;font-weight:800;font-size:12px;color:var(--red)'>" + fmtD(cost) + " €</div>" +
+    "<button class='del-btn' onclick=\"delItem('" + incId + "','" + it.id + "')\">×</button>" +
+    "</div>";
+
+  return "<div style='border-bottom:1px solid var(--line)'>" + row + pctBlock + "</div>";
 }
 
 function renderIncidents(){
@@ -511,10 +643,9 @@ function renderIncidents(){
   const totalY=ic.reduce((s,i)=>s+i.annualTotal,0);
   document.getElementById("inc-total-val").textContent=`${fmt(totalY)} €/an`;
 
-  const personSel=persons.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
-  const itemGrid="grid-template-columns:130px 1fr 80px 70px 80px 26px";
-
-  let html=ic.map(inc=>`
+  let html=ic.map(inc=>{
+    const itemsHtml = inc.items.map(it => renderItem(inc.id, it)).join("");
+    return `
     <div class="inc-card${inc.avoided?"":" disabled"}">
       <div class="inc-hdr">
         <input class="inc-name-input" value="${inc.name}" placeholder="Nom de l'incident…"
@@ -525,7 +656,7 @@ function renderIncidents(){
             onchange="updInc('${inc.id}','freq',+this.value)">
         </div>
         <label class="inc-avoid-wrap">
-          <input type="checkbox" ${inc.avoided?"checked":""} 
+          <input type="checkbox" ${inc.avoided?"checked":""}
             onchange="updInc('${inc.id}','avoided',this.checked)">
           <span>Evité avec Lucca</span>
         </label>
@@ -537,31 +668,7 @@ function renderIncidents(){
       </div>
       <div class="inc-body">
         <div class="items-label">PERSONNES IMPLIQUÉES</div>
-        ${inc.items.map(it=>{
-          const r=getRate(it.personId,it.rate);
-          const cost=it.hours*r;
-          const pc=getColor(it.personId);
-          return`<div class="item-row" style="${itemGrid}">
-            <select class="t-sel" onchange="updItem('${inc.id}','${it.id}','personId',this.value)">
-              ${persons.map(p=>`<option value="${p.id}"${it.personId===p.id?" selected":""}>${p.name}</option>`).join("")}
-              <option value="ext"${it.personId==="ext"?" selected":""}>Externe</option>
-            </select>
-            <input class="item-lbl-input" value="${it.label}" placeholder="Description du temps passé…"
-              onchange="updItem('${inc.id}','${it.id}','label',this.value)">
-            ${it.personId==="ext"
-              ?`<div style="display:flex;align-items:center;gap:3px">
-                  <input class="ni" type="number" value="${it.rate||75}" step="5" min="0"
-                    onchange="updItem('${inc.id}','${it.id}','rate',+this.value)">
-                  <span style="font-size:10px;color:var(--mid)">€/h</span>
-                </div>`
-              :`<div class="item-rate-box" style="color:${pc}">${fmtD(r)} €/h</div>`
-            }
-            <input class="ni" type="number" value="${it.hours}" step="0.5" min="0"
-              onchange="updItem('${inc.id}','${it.id}','hours',+this.value)">
-            <div class="item-cost-box">${fmtD(cost)} €</div>
-            <button class="del-btn" onclick="delItem('${inc.id}','${it.id}')">×</button>
-          </div>`;
-        }).join("")}
+        ${itemsHtml}
         <div class="add-person-row">
           <button class="btn btn-outline" onclick="addItem('${inc.id}')" style="font-size:11px;padding:4px 10px">+ Personne</button>
         </div>
@@ -581,7 +688,8 @@ function renderIncidents(){
           <span>× ${inc.freq}/an = <strong>${fmt(inc.annualTotal)} €/an évités</strong></span>
         </div>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
   document.getElementById("incidents-body").innerHTML=html;
 }
 
@@ -694,7 +802,24 @@ function addIncident(){
 function delIncident(id){incidents=incidents.filter(i=>i.id!==id);renderAll()}
 
 function addItem(incId){
-  incidents=incidents.map(i=>i.id===incId?{...i,items:[...i.items,{id:n(),personId:persons[0].id,label:"",hours:1}]}:i);
+  incidents=incidents.map(i=>i.id===incId?{...i,items:[...i.items,{id:n(),personId:persons[0].id,label:"",hours:1,mode:"single"}]}:i);
+  renderAll();
+}
+function updItemMode(incId,itemId,v){
+  incidents=incidents.map(i=>i.id===incId?{...i,items:i.items.map(it=>{
+    if(it.id!==itemId)return it;
+    if(v==="tous")return{...it,mode:"tous",personId:persons[0].id};
+    if(v==="ext")return{...it,mode:"single",personId:"ext"};
+    return{...it,mode:"single",personId:v};
+  })}:i);
+  renderAll();
+}
+function updPct(incId,itemId,personId,v){
+  incidents=incidents.map(i=>i.id===incId?{...i,items:i.items.map(it=>{
+    if(it.id!==itemId)return it;
+    const pcts={...(it.pcts||{}),[personId]:v};
+    return{...it,pcts};
+  })}:i);
   renderAll();
 }
 function updItem(incId,itemId,f,v){
