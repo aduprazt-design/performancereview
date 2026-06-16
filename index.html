@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Entretien de Développement — Alpineo</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -756,73 +755,317 @@ function metaPDF(){
   return {n,tr,dt};
 }
 
-async function doPDF(which){
+function doPDF(which){
   syncDOM();
   const m=metaPDF();
-  const titles={matrix:'Matrice Skill × Will',questionnaire:'Questionnaire',synthesis:'Synthèse',all:'Entretien Complet'};
+  const win=window.open('','_blank');
+  win.document.open();
+  win.document.write(buildPrintDoc(which,m));
+  win.document.close();
+}
 
-  const wrapper=document.createElement('div');
-  wrapper.style.cssText='width:794px;padding:28px 30px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;color:#1E293B;line-height:1.5';
+// ── Styles communs pour le document imprimable ──
+const PRINT_CSS=`
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;font-size:10pt;color:#1E293B;background:#fff;line-height:1.5}
+@page{size:A4 portrait;margin:12mm 14mm}
+.page-break{page-break-before:always}
 
-  // Header
-  const hdr=document.createElement('div');
-  hdr.style.cssText='display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:3px solid #2563EB;margin-bottom:22px';
-  hdr.innerHTML=`<div><div style="font-size:19px;font-weight:800;color:#1E293B;letter-spacing:-.02em">Entretien de Développement</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">Alpineo Consulting · HR Ops Specialist Track${which!=='all'?' · '+titles[which]:''}</div></div><div style="text-align:right"><div style="font-size:14px;font-weight:700;color:#1E293B">${m.n}</div><div style="font-size:12px;color:#475569">${m.tr} · ${m.dt}</div></div>`;
-  wrapper.appendChild(hdr);
+/* Header */
+.doc-hd{display:flex;align-items:center;justify-content:space-between;padding-bottom:10pt;border-bottom:2.5pt solid #2563EB;margin-bottom:16pt}
+.doc-hd-title{font-size:16pt;font-weight:800;color:#1E293B;letter-spacing:-.02em}
+.doc-hd-sub{font-size:8pt;color:#94A3B8;margin-top:2pt}
+.doc-hd-meta{text-align:right;font-size:9pt;color:#475569}
+.doc-hd-name{font-size:12pt;font-weight:700;color:#1E293B}
 
-  const tabs=which==='all'?['tab-matrix','tab-questionnaire','tab-synthesis']:['tab-'+which];
-  const canvas=document.getElementById('radarChart');
+/* Section heading */
+.sec-hd{background:#EFF6FF;color:#1D4ED8;font-size:9pt;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5pt 10pt;border-left:3pt solid #2563EB;margin:14pt 0 8pt}
 
-  tabs.forEach((tid,i)=>{
-    const src=document.getElementById(tid);
-    if(!src)return;
-    if(which==='all'&&i>0){
-      const sh=document.createElement('div');
-      sh.style.cssText='font-size:14px;font-weight:800;color:#2563EB;padding:14px 0 8px;border-top:1px solid #E2E8F0;margin-top:4px;page-break-before:always';
-      sh.textContent={'tab-matrix':'1 — Matrice Skill × Will','tab-questionnaire':'2 — Questionnaire','tab-synthesis':'3 — Synthèse'}[tid];
-      wrapper.appendChild(sh);
-    }
-    const clone=src.cloneNode(true);
-    clone.querySelectorAll('.no-print,.ebar').forEach(e=>e.remove());
-    clone.querySelectorAll('.ocbody').forEach(e=>e.style.display='block');
-    clone.querySelectorAll('.oc').forEach(e=>{e.style.borderTop='1px solid #E2E8F0';e.style.borderRadius='0';});
-    // Perf pill cosmetics for PDF
-    clone.querySelectorAll('.pp').forEach(e=>{e.style.display='inline-block';e.style.marginBottom='2px';});
-    // Chart canvas → image
-    if(canvas){
-      clone.querySelectorAll('#radarChart').forEach(c=>{
-        const img=document.createElement('img');
-        img.src=canvas.toDataURL('image/png');
-        img.style.cssText='width:100%;height:250px;object-fit:contain;display:block';
-        c.parentNode.replaceChild(img,c);
-      });
-    }
-    wrapper.appendChild(clone);
+/* Card */
+.card{background:#fff;border:1pt solid #E2E8F0;border-radius:6pt;margin-bottom:8pt;overflow:hidden}
+.card-hd{padding:7pt 10pt;border-bottom:1pt solid #E2E8F0;background:#F8FAFC;display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:10pt;font-weight:700;color:#1E293B}
+.card-body{padding:10pt}
+
+/* Météo */
+.meteo-mood{display:inline-block;font-size:18pt;margin-right:6pt;vertical-align:middle}
+.meteo-label{font-size:11pt;font-weight:700;vertical-align:middle}
+.meteo-detail{margin-top:8pt;font-size:9pt;color:#475569;white-space:pre-wrap}
+
+/* Matrice */
+.matrix-outer{display:grid;grid-template-columns:14pt 1fr;grid-template-rows:1fr 14pt;gap:3pt;height:200pt}
+.mat-y-label{writing-mode:vertical-rl;transform:rotate(180deg);font-size:7pt;font-weight:700;color:#94A3B8;letter-spacing:.05em;text-transform:uppercase;text-align:center}
+.mat-x-label{grid-column:2;font-size:7pt;font-weight:700;color:#94A3B8;letter-spacing:.05em;text-transform:uppercase;text-align:center;padding-top:2pt}
+.mat-grid{position:relative;border:1pt solid #CBD5E1;border-radius:6pt;overflow:hidden}
+.quad{position:absolute;width:50%;height:50%}
+.q-bl{bottom:0;left:0;background:#FEE2E2}.q-br{bottom:0;right:0;background:#DBEAFE}
+.q-tl{top:0;left:0;background:#FEF3C7}.q-tr{top:0;right:0;background:#D1FAE5}
+.q-lbl{position:absolute;bottom:5pt;left:7pt;font-size:6pt;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
+.q-bl .q-lbl{color:#B91C1C}.q-br .q-lbl{color:#1D4ED8}.q-tl .q-lbl{color:#B45309}.q-tr .q-lbl{color:#047857}
+.mat-divh{position:absolute;width:100%;height:1pt;background:#CBD5E1;top:50%}
+.mat-divv{position:absolute;height:100%;width:1pt;background:#CBD5E1;left:50%}
+.bbl{position:absolute;width:18pt;height:18pt;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:6pt;font-weight:800;color:#fff;border:1.5pt solid rgba(255,255,255,.7);box-shadow:0 1pt 4pt rgba(0,0,0,.2);transform:translate(-50%,-50%)}
+.mat-legend{display:flex;gap:10pt;flex-wrap:wrap;margin-top:8pt}
+.leg-it{display:flex;align-items:center;gap:4pt;font-size:8pt;color:#475569}
+.leg-dot{width:8pt;height:8pt;border-radius:50%;flex-shrink:0}
+
+/* Objectifs */
+.obj-card{border:1pt solid #E2E8F0;border-radius:6pt;margin-bottom:7pt;overflow:hidden;break-inside:avoid}
+.obj-hd{padding:6pt 10pt;display:flex;align-items:center;gap:7pt;border-bottom:1pt solid #E2E8F0}
+.obj-num{width:18pt;height:18pt;border-radius:50%;color:#fff;font-size:8pt;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.obj-title{font-size:10pt;font-weight:700;color:#1E293B;flex:1}
+.obj-cat{font-size:7.5pt;padding:1.5pt 6pt;border-radius:10pt;border:1pt solid;font-weight:600}
+.sbadge{padding:2pt 7pt;border-radius:10pt;font-size:8pt;font-weight:700}
+.s-nou{background:#EFF6FF;color:#2563EB}.s-att{background:#ECFDF5;color:#059669}
+.s-enc{background:#FFF7ED;color:#C2410C}.s-par{background:#FFFBEB;color:#D97706}.s-na{background:#FEF2F2;color:#DC2626}
+.obj-body{padding:8pt 10pt;display:flex;flex-direction:column;gap:7pt}
+.obj-field{display:flex;flex-direction:column;gap:3pt}
+.field-lbl{font-size:7.5pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em}
+.field-val{font-size:9.5pt;color:#1E293B;white-space:pre-wrap;min-height:10pt}
+.field-empty{color:#CBD5E1;font-style:italic;font-size:9pt}
+.perf-pill{display:inline-block;padding:2pt 8pt;border-radius:10pt;font-size:8pt;font-weight:700;margin-right:4pt}
+.mgr-block{background:#F8FAFC;border-top:1.5pt dashed #CBD5E1;padding:8pt 10pt}
+.mgr-lbl{font-size:7.5pt;font-weight:800;color:#2563EB;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6pt;display:flex;align-items:center;gap:4pt}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8pt}
+
+/* Synthèse */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8pt;margin-bottom:12pt}
+.kpi{background:#F8FAFC;border:1pt solid #E2E8F0;border-radius:6pt;padding:8pt;text-align:center}
+.kpi-val{font-size:22pt;font-weight:800;line-height:1;margin-bottom:2pt}
+.kpi-lbl{font-size:7pt;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.sum-row{display:flex;align-items:flex-start;gap:6pt;padding:6pt 0;border-bottom:1pt solid #E2E8F0;font-size:9pt}
+.sum-row:last-child{border-bottom:none}
+.sum-num{width:14pt;font-size:8pt;font-weight:700;color:#94A3B8;flex-shrink:0}
+.sum-title{flex:1;font-weight:500}
+.sum-perf{font-size:7.5pt;color:#94A3B8;margin-top:1pt}
+.sec-sub-hd{font-size:8pt;font-weight:800;text-transform:uppercase;letter-spacing:.07em;padding:6pt 0 4pt;margin-top:4pt;border-top:1pt solid #E2E8F0}
+.action-row{display:flex;align-items:flex-start;gap:6pt;padding:6pt 0;border-bottom:1pt solid #E2E8F0;font-size:9pt}
+.action-row:last-child{border-bottom:none}
+.action-dot{width:5pt;height:5pt;border-radius:50%;background:#2563EB;margin-top:3pt;flex-shrink:0}
+.notes-print{font-size:9.5pt;color:#1E293B;white-space:pre-wrap;min-height:20pt}
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8pt;margin-bottom:10pt}
+.info-cell{display:flex;flex-direction:column;gap:2pt}
+.info-key{font-size:7.5pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em}
+.info-val{font-size:9.5pt;color:#1E293B;font-weight:500}
+`;
+
+const SCOPES_C={fr:{label:'France',flag:'🇫🇷',color:'#1D9E75'},ch:{label:'Suisse',flag:'🇨🇭',color:'#2563EB'},lu:{label:'Luxembourg',flag:'🇱🇺',color:'#DC2626'},pt:{label:'Portugal',flag:'🇵🇹',color:'#D97706'},be:{label:'Belgique',flag:'🇧🇪',color:'#7C3AED'},tx:{label:'Transversal',flag:'🔀',color:'#64748B'}};
+const PERFS_C=[{v:'insuf',s:'Insuffisant',c:'#DC2626',bg:'#FEF2F2'},{v:'travail',s:'À travailler',c:'#D97706',bg:'#FFFBEB'},{v:'bonne',s:'Bonne performance',c:'#059669',bg:'#ECFDF5'},{v:'excep',s:'Exceptionnelle',c:'#7C3AED',bg:'#F5F3FF'}];
+const SMAP_C={'nouveau':'s-nou','atteint':'s-att','en-cours':'s-enc','partiel':'s-par','non-atteint':'s-na'};
+const SLBL_C={'nouveau':'Nouveau','atteint':'Atteint','en-cours':'En cours','partiel':'Partiel','non-atteint':'Non atteint'};
+const SECS_C=[{k:'hard',i:'🎯',t:'Hard Skills',c:'#2563EB',bg:'#EFF6FF',bd:'#BFDBFE'},{k:'soft',i:'💡',t:'Soft Skills',c:'#059669',bg:'#ECFDF5',bd:'#6EE7B7'},{k:'next',i:'📋',t:'Prochain trimestre',c:'#7C3AED',bg:'#F5F3FF',bd:'#C4B5FD'}];
+const MOODS_C=[{e:'⛈',l:'Très difficile'},{e:'🌧',l:'Difficile'},{e:'⛅',l:'Correct'},{e:'☀️',l:'Bon trimestre'},{e:'🌟',l:'Excellent'}];
+
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function val(s){return s?`<span>${esc(s)}</span>`:`<span class="field-empty">—</span>`;}
+function perfBadge(v){const p=PERFS_C.find(x=>x.v===v);return p?`<span class="perf-pill" style="background:${p.bg};color:${p.c}">${p.s}</span>`:'<span class="field-empty">—</span>';}
+function sDate(d){return d?new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}):'';}
+
+function buildDocHeader(m, subtitle){
+  return `<div class="doc-hd">
+    <div><div class="doc-hd-title">Entretien de Développement</div>
+    <div class="doc-hd-sub">Alpineo Consulting · HR Ops Specialist Track${subtitle?' · '+subtitle:''}</div></div>
+    <div class="doc-hd-meta"><div class="doc-hd-name">${esc(m.n)}</div><div>${esc(m.tr)} · ${esc(m.dt)}</div></div>
+  </div>`;
+}
+
+function buildMatrixSection(){
+  const c=comps[activeTrim];
+  let bubblesHtml=c.map(b=>{
+    const sc=SCOPES_C[b.scope]||SCOPES_C.tx;
+    const lp=Math.min(96,Math.max(4,(b.will/4)*100));
+    const tp=Math.min(96,Math.max(4,(1-b.skill/4)*100));
+    return `<span class="bbl" style="left:${lp}%;top:${tp}%;background:${sc.color}" title="${esc(b.name)}">${esc(b.code)}</span>`;
+  }).join('');
+
+  const legend=Object.entries(SCOPES_C).map(([k,s])=>`<div class="leg-it"><span class="leg-dot" style="background:${s.color}"></span>${s.flag} ${s.label}</div>`).join('');
+
+  const compList=c.map(b=>{
+    const sc=SCOPES_C[b.scope]||SCOPES_C.tx;
+    const quad=b.skill>=2&&b.will>=2?'Déléguer':b.skill>=2&&b.will<2?'Remotiver':b.skill<2&&b.will>=2?'Développer':'Former';
+    return `<div style="display:flex;align-items:center;gap:5pt;padding:3pt 0;border-bottom:0.5pt solid #F1F5F9;font-size:8.5pt">
+      <span style="width:14pt;height:14pt;border-radius:50%;background:${sc.color};color:#fff;font-size:6pt;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${esc(b.code)}</span>
+      <span style="flex:1;color:#1E293B;font-weight:500">${esc(b.name)}</span>
+      <span style="color:#94A3B8;font-size:7.5pt">${sc.flag} · S:${b.skill.toFixed(1)} W:${b.will.toFixed(1)} · ${quad}</span>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="matrix-outer">
+    <div class="mat-y-label">Skill (Compétence) ↑</div>
+    <div class="mat-grid">
+      <div class="quad q-bl"><div class="q-lbl">Former</div></div>
+      <div class="quad q-br"><div class="q-lbl">Développer</div></div>
+      <div class="quad q-tl"><div class="q-lbl">Remotiver</div></div>
+      <div class="quad q-tr"><div class="q-lbl">Déléguer ✓</div></div>
+      <div class="mat-divh"></div><div class="mat-divv"></div>
+      ${bubblesHtml}
+    </div>
+    <div class="mat-x-label">Will (Motivation) →</div>
+  </div>
+  <div class="mat-legend">${legend}</div>
+  <div style="margin-top:12pt"><div style="font-size:8pt;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6pt">Détail des compétences</div>${compList}</div>`;
+}
+
+function buildMeteoSection(){
+  const mood=MOODS_C.find(x=>x.e===meteo.mood);
+  return `<div class="card-body">
+    <div>${mood?`<span class="meteo-mood">${mood.e}</span><span class="meteo-label">${mood.l}</span>`:'<span class="field-empty">Humeur non renseignée</span>'}</div>
+    ${meteo.detail?`<div class="meteo-detail" style="margin-top:8pt;font-size:9.5pt;color:#475569">${esc(meteo.detail)}</div>`:''}
+  </div>`;
+}
+
+function buildQuestionnaireSection(){
+  let html='';
+  // Info entretien
+  html+=`<div class="info-grid">
+    <div class="info-cell"><div class="info-key">Collaboratrice</div><div class="info-val">${esc(document.getElementById('qCollab')?.value||'')}</div></div>
+    <div class="info-cell"><div class="info-key">Manager</div><div class="info-val">${esc(document.getElementById('qManager')?.value||'')}</div></div>
+    <div class="info-cell"><div class="info-key">Trimestre</div><div class="info-val">${esc(document.getElementById('qTrim')?.value||'')}</div></div>
+    <div class="info-cell"><div class="info-key">Date</div><div class="info-val">${esc(document.getElementById('qDate')?.value||'')}</div></div>
+    <div class="info-cell"><div class="info-key">Lieu</div><div class="info-val">${esc(document.getElementById('qLieu')?.value||'')}</div></div>
+    <div class="info-cell"><div class="info-key">Format</div><div class="info-val">${esc(document.getElementById('qFormat')?.value||'')}</div></div>
+  </div>`;
+
+  // Météo
+  html+=`<div class="card" style="margin-bottom:10pt">
+    <div class="card-hd"><span class="card-title">🌤 Météo du trimestre</span></div>
+    ${buildMeteoSection()}
+  </div>`;
+
+  // Objectifs par section
+  SECS_C.forEach(sec=>{
+    const group=objs.filter(o=>o.section===sec.k);
+    if(!group.length) return;
+    html+=`<div style="display:flex;align-items:center;gap:6pt;padding:6pt 8pt;border-radius:5pt 5pt 0 0;background:${sec.bg};border:1pt solid ${sec.bd};border-bottom:none;margin-top:10pt">
+      <span style="font-size:13pt">${sec.i}</span>
+      <span style="font-size:10pt;font-weight:800;color:${sec.c}">${sec.t}</span>
+    </div>
+    <div style="border:1pt solid ${sec.bd};border-top:none;border-radius:0 0 5pt 5pt;overflow:hidden;margin-bottom:10pt">`;
+
+    const isNext=sec.k==='next';
+    group.forEach((o,i)=>{
+      const pf=PERFS_C.find(p=>p.v===o.perf);
+      const pm=PERFS_C.find(p=>p.v===o.perfM);
+      html+=`<div class="obj-card" style="border:none;border-radius:0;border-top:${i>0?'1pt solid #E2E8F0':'none'}">
+        <div class="obj-hd" style="background:${sec.bg}22">
+          <div class="obj-num" style="background:${sec.c}">${i+1}</div>
+          <div class="obj-title">${esc(o.title)}</div>
+          ${o.cat?`<span class="obj-cat" style="background:${sec.bg};color:${sec.c};border-color:${sec.bd}">${esc(o.cat)}</span>`:''}
+          <span class="sbadge ${SMAP_C[o.status]}">${SLBL_C[o.status]}</span>
+        </div>
+        <div class="obj-body">`;
+
+      if(!isNext){
+        html+=`<div class="row2">
+          <div class="obj-field"><div class="field-lbl">👤 Performance Lou</div>${perfBadge(o.perf)}</div>
+          <div class="obj-field"><div class="field-lbl">👔 Performance Manager</div>${perfBadge(o.perfM)}</div>
+        </div>
+        <div class="row2">
+          <div class="obj-field"><div class="field-lbl">✅ Ce qui est bien</div>${val(o.bilanBien)}</div>
+          <div class="obj-field"><div class="field-lbl">🔧 Ce qui est à améliorer</div>${val(o.bilanAmel)}</div>
+        </div>`;
+        if(o.commentM){
+          html+=`<div class="mgr-block"><div class="mgr-lbl">👔 Commentaire manager</div><div style="font-size:9.5pt;color:#1E293B">${esc(o.commentM)}</div></div>`;
+        }
+      }
+
+      html+=`<div class="obj-field"><div class="field-lbl">🎯 ${isNext?'Objectif & deadline':'Objectif renouvelé & deadline'}</div>
+        <div style="display:flex;align-items:baseline;gap:10pt">
+          ${val(o.nextObj)}
+          ${o.deadline?`<span style="font-size:8pt;color:#64748B;white-space:nowrap">→ ${sDate(o.deadline)}</span>`:''}
+        </div>
+      </div>`;
+
+      html+=`</div></div>`;
+    });
+    html+=`</div>`;
   });
+  return html;
+}
 
-  // Append with near-zero opacity so html2canvas can render it
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;top:0;left:0;width:794px;z-index:99999;opacity:0.01;pointer-events:none;overflow:visible';
-  ov.appendChild(wrapper);
-  document.body.appendChild(ov);
+function buildSynthesisSection(){
+  const scored=objs.filter(o=>o.section!=='next');
+  const att=scored.filter(o=>o.status==='atteint').length;
+  const enc=scored.filter(o=>o.status==='en-cours').length;
+  const na=scored.filter(o=>o.status==='non-atteint').length;
+  const total=scored.length;
 
-  const fn=`${titles[which].replace(/\s/g,'_')}_${m.n}_${m.tr.split(' ')[0]}.pdf`;
+  let html=`<div class="kpi-row">
+    <div class="kpi"><div class="kpi-val" style="color:#2563EB">${total}</div><div class="kpi-lbl">Objectifs</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#059669">${att}</div><div class="kpi-lbl">Atteints</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#D97706">${enc}</div><div class="kpi-lbl">En cours</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#DC2626">${na}</div><div class="kpi-lbl">Non atteints</div></div>
+  </div>`;
 
-  try{
-    await html2pdf().set({
-      margin:[8,8,8,8],
-      filename:fn,
-      image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,logging:false,backgroundColor:'#ffffff',width:794,windowWidth:794},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-      pagebreak:{mode:['avoid-all','css']},
-    }).from(wrapper).save();
-  }catch(e){
-    console.error('PDF error:',e);
-    window.print();
-  }finally{
-    document.body.removeChild(ov);
+  // Bilan objectifs
+  html+=`<div class="card"><div class="card-hd"><span class="card-title">Bilan des objectifs</span></div><div class="card-body">`;
+  SECS_C.filter(s=>s.k!=='next').forEach(sec=>{
+    const g=scored.filter(o=>o.section===sec.k);
+    if(!g.length) return;
+    html+=`<div class="sec-sub-hd" style="color:${sec.c}">${sec.i} ${sec.t}</div>`;
+    g.forEach((o,i)=>{
+      const pf=PERFS_C.find(p=>p.v===o.perf);
+      const pm=PERFS_C.find(p=>p.v===o.perfM);
+      html+=`<div class="sum-row">
+        <div class="sum-num">${i+1}</div>
+        <div style="flex:1"><div class="sum-title">${esc(o.title)}</div>
+          ${pf||pm?`<div class="sum-perf">${pf?`Lou: <strong style="color:${pf.c}">${pf.s}</strong> `:''} ${pm?`· Manager: <strong style="color:${pm.c}">${pm.s}</strong>`:''}</div>`:''}</div>
+        <span class="sbadge ${SMAP_C[o.status]}">${SLBL_C[o.status]}</span>
+      </div>`;
+    });
+  });
+  html+=`</div></div>`;
+
+  // Plan d'action
+  const actions=objs.filter(o=>o.nextObj);
+  html+=`<div class="card" style="margin-top:8pt"><div class="card-hd"><span class="card-title">📋 Plan d'action — Prochaine période</span></div><div class="card-body">`;
+  if(actions.length){
+    html+=actions.map(a=>`<div class="action-row"><div class="action-dot"></div><div style="flex:1"><div style="font-weight:600;font-size:9.5pt">${esc(a.nextObj)}</div>${a.deadline?`<div style="font-size:8pt;color:#64748B">${sDate(a.deadline)}</div>`:''}</div></div>`).join('');
+  }else{
+    html+=`<div style="color:#94A3B8;font-size:9pt;font-style:italic">Aucune action définie.</div>`;
   }
+  html+=`</div></div>`;
+
+  // Notes globales
+  const gn=document.getElementById('globalNotes')?.value||'';
+  if(gn){
+    html+=`<div class="card" style="margin-top:8pt"><div class="card-hd"><span class="card-title">📝 Notes générales</span></div><div class="card-body"><div class="notes-print">${esc(gn)}</div></div></div>`;
+  }
+
+  return html;
+}
+
+function buildPrintDoc(which, m){
+  const labels={matrix:'Matrice Skill × Will',questionnaire:'Questionnaire',synthesis:'Synthèse',all:''};
+  let body='';
+
+  if(which==='all'){
+    body+=buildDocHeader(m,'');
+    body+=`<div class="sec-hd">1 — Matrice Skill × Will</div>`;
+    body+=buildMatrixSection();
+    body+=`<div class="page-break"></div>`;
+    body+=buildDocHeader(m,'');
+    body+=`<div class="sec-hd">2 — Questionnaire trimestriel</div>`;
+    body+=buildQuestionnaireSection();
+    body+=`<div class="page-break"></div>`;
+    body+=buildDocHeader(m,'');
+    body+=`<div class="sec-hd">3 — Synthèse</div>`;
+    body+=buildSynthesisSection();
+  } else {
+    body+=buildDocHeader(m,labels[which]);
+    if(which==='matrix')        body+=buildMatrixSection();
+    if(which==='questionnaire') body+=buildQuestionnaireSection();
+    if(which==='synthesis')     body+=buildSynthesisSection();
+  }
+
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+    <title>Entretien ${esc(m.n)} — ${esc(m.tr)}</title>
+    <style>${PRINT_CSS}</style>
+  </head><body>
+    <div style="padding:0">${body}</div>
+    <script>window.addEventListener('load',()=>setTimeout(()=>window.print(),600));<\/script>
+  </body></html>`;
 }
 
 // ═══════════ SAVE / LOAD ═══════════
